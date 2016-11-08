@@ -6,40 +6,92 @@
     <title></title>
 
     <link rel="manifest" href="manifest.json">
-
-    <!-- un-comment this code to enable service worker
-    <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('service-worker.js')
-          .then(() => console.log('service worker installed'))
-          .catch(err => console.log('Error', err));
-      }
-    </script>-->
-
+    <link rel="shortcut icon" href="img/favico.ico"/>
     <link href="lib/ionic/css/ionic.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
 
-    <!-- IF using Sass (run gulp sass first), then uncomment below and remove the CSS includes above
-    <link href="css/ionic.app.css" rel="stylesheet">
-    -->
-
-    <!-- ionic/angularjs js -->
+    <!-- ionic/angularjs and localstorage js -->
     <script src="lib/ionic/js/ionic.bundle.js"></script>
+    <script src="lib/angular-local-storage/dist/angular-local-storage.js"></script>
 
-    <!-- cordova script (this will be a 404 during development) -->
     <script src="cordova.js"></script>
 
-    <!-- your app's js -->
+    <!-- app's js -->
     <script src="js/app.js"></script>
   </head>
-  <body ng-app="starter">
-
+  <body ng-app="dstnapp" ng-controller="main" ng-init="getApiKey()">
     <ion-pane>
-      <ion-header-bar class="bar-stable">
-        <h1 class="title">Ionic Blank Starter</h1>
+      <!-- HEADER also init API Key if it's stored in phones localstorage -->
+      <ion-header-bar class="bar-dark" ng-init="getAPIKey()">
+        <h1 class="title">destiny mobile</h1>
+        <!-- Opens MODAL for saving API Key -->
+        <button class="button button-icon" ng-click="openDstnModal()">
+        <i class="icon ion-compose"></i>
+        </button>
       </ion-header-bar>
+      <!-- BODY -->
       <ion-content>
+        <!-- SEARCH -->
+        <form ng-submit="getAllMembers(clanName)">
+          <div class="list list-inset">
+            <label class="item item-input">
+            <input ng-model="clanName" type="text" placeholder="Clan name">
+            </label>
+            <button type="submit" class="button button-block button-positive">Search</button>
+          </div>
+        </form>
+        <!-- RESULT -->
+        <!-- First DIV hold's Search waiting spinner that shows when search has been made and it's hidden when first result is ready to display -->
+        <div class="{{search}}">
+          <ion-spinner icon="lines" class="spinner-energized"></ion-spinner>
+        </div>
+        <!-- for each loop made in AngularJS style track by $index holds for future development --> 
+        <div class="list card" ng-repeat="members in memberData track by $index">
+          <div ng-repeat="member in members">
+            <div class="item item-divider">
+              <strong>
+                <span ng-bind="member.bungieNetUser.psnDisplayName | uppercase"></span>
+              </strong>
+            </div>
+          <div class="item item-body" ng-repeat="account in member.destinyAccounts">
+            <div ng-repeat="character in account.characters">
+              <div class="row">
+                <div class="col calm"><strong>Class: </strong><span ng-bind="character.characterClass.className"></span></div>
+                <div class="col balanced"><strong>LVL: </strong><span ng-bind="character.level"></span></div>
+                <div class="col energized"><strong>Light: </strong><span ng-bind="character.powerLevel"></span></div>
+              </div>                  
+              <div class="row">
+                <div class="col"><strong>Last played: </strong><span ng-bind="character.dateLastPlayed | date : 'dd.MM.yyyy HH:mm'"></span></div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col"><strong>Grimoire: </strong><span ng-bind="account.grimoireScore"></span></div>
+            </div>
+          </div>
+          </div>
+        </div>
       </ion-content>
     </ion-pane>
+    <!-- MODAL holding the API Key save function -->
+    <script id="dstn-modal.html" type="text/ng-template">
+      <ion-modal-view>
+        <ion-header-bar class="bar-dark">
+          <h1 class="title" ng-click="showInfo()">Add Bungie API key</h1>
+          <button class="button button-icon" ng-click="closeDstnModal()">
+          <i class="icon ion-android-close"></i>
+          </button>
+        </ion-header-bar>
+        <ion-content>
+          <form ng-submit="setAPIKey(apiKey)">
+            <div class="list list-inset">
+              <label class="item item-input">
+              <input ng-model="apiKey" type="text" placeholder="API Key">
+              </label>
+              <button type="submit" class="button button-block button-positive">Add API Key</button>
+            </div>
+          </form>
+        </ion-content>
+      </ion-modal-view>
+    </script>
   </body>
 </html>
