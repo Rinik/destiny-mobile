@@ -1,1 +1,9 @@
-/* Empty. Add your own CSS if you like */
+.search-hide {
+	visibility: hidden;
+	text-align: center;
+}
+
+.search-show {
+	visibility: visible;
+	text-align: center;
+}
