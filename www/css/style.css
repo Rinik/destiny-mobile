@@ -7,3 +7,8 @@
 	visibility: visible;
 	text-align: center;
 }
+
+.crucible {
+	float: right;
+	text-align: right;
+}
