@@ -32,7 +32,7 @@
       <!-- BODY -->
       <ion-content>
         <!-- SEARCH -->
-        <form ng-submit="getAllMembers(clanName)">
+        <form ng-submit="userSearch(clanName)">
           <div class="list list-inset">
             <label class="item item-input">
             <input ng-model="clanName" type="text" placeholder="Clan name">
@@ -90,6 +90,8 @@
               <button type="submit" class="button button-block button-positive">Add API Key</button>
             </div>
           </form>
+          <ion-toggle ng-model="useProxy.checked">{{useProxy.text}}</ion-toggle><br />
+          <ion-toggle ng-model="displayCrucible.checked">{{displayCrucible.text}}</ion-toggle><br />
         </ion-content>
       </ion-modal-view>
     </script>

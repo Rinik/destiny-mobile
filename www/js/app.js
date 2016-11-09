@@ -32,11 +32,14 @@ app.controller('main', function ($scope, $http, $ionicModal, $ionicPopup, localS
 
   // Allocate some variables
   var apiData = "X-API-Key"; // When save to local storage get save as X-API-Key value
+  var proxySettings = "proxy"; //
+  var crucibleData = "crucible";
   $scope.apiKey = ""; // Just empty string to start
   $scope.httpConfig =""; // Same as above
   $scope.memberData = []; // Empty array
   $scope.search = "search-hide"; // Search CSS-class for waiting icon (spinner), default is hide spinner
   $scope.clickCount = 0; // Just for the easter egg.
+  $scope.useProxy = {}; // Empty object for proxySettings.
 
   //Show hidden info screen (easter egg).
   $scope.showInfo = function() {
@@ -57,6 +60,7 @@ app.controller('main', function ($scope, $http, $ionicModal, $ionicPopup, localS
   // show API Key storing page
   $scope.openDstnModal = function() {
     $scope.newDstnModal.show();
+    $scope.getProxy();
     $scope.getCrucible();
   };
 
@@ -64,6 +68,7 @@ app.controller('main', function ($scope, $http, $ionicModal, $ionicPopup, localS
   $scope.closeDstnModal = function() {
     $scope.newDstnModal.hide();
     // Just to make sure that class stays hidden (2/3 there's weird function that show's search spinner after saving API Key to local storage)
+    $scope.setProxy();
     $scope.setCrucible();
     $scope.search = "search-hide";
   };
@@ -138,6 +143,34 @@ app.controller('main', function ($scope, $http, $ionicModal, $ionicPopup, localS
     $scope.newDstnModal.hide();
   }
 
+  // set proxy status for local storage
+  $scope.setProxy = function() {
+    localStorageService.set(proxySettings, $scope.useProxy);
+  }
+
+  // get proxy status from local storage
+  $scope.getProxy = function() {
+    if(localStorageService.get(proxySettings)) {
+      $scope.useProxy = localStorageService.get(proxySettings);
+    } else {
+      localStorageService.set(proxySettings, { "text": "Use own proxy server", "checked": false });
+    }
+  }
+
+  // set crucible status to local storage
+  $scope.setCrucible = function() {
+    localStorageService.set(crucibleData, $scope.displayCrucible);
+  }
+
+  // set crucible status to local storage
+  $scope.getCrucible = function() {
+    if(localStorageService.get(crucibleData)) {
+      $scope.displayCrucible = localStorageService.get(crucibleData);
+    } else {
+      localStorageService.set(crucibleData, { "text": "Display crucible", "checked": false });
+    }
+  }
+
   // Check memberdata and delete XBOX One stats
   $scope.checkMember = function(data) {
     var tempData = JSON.parse(JSON.stringify(data));
@@ -148,7 +181,21 @@ app.controller('main', function ($scope, $http, $ionicModal, $ionicPopup, localS
       console.log("No psnDisplayName not adding user.");
       return 2; // It's good practice to return something and you can catch error when code returns something. It could be false but I decieded to return 2.
     }
+    if($scope.displayCrucible.checked == true && $scope.useProxy == true) {
+      $scope.checkCrucible(tempData[0]["bungieNetUser"]["psnDisplayName"]);
+    }
     return tempData;
+  }
+
+  // Get Crucible data from API
+  $scope.checkCrucible = function(data) {
+    var crucibleTemp = data;
+    $http.get("http://localhost/proxy/?crucible=" + data).success(function (result) {
+      // returns Crucible score from psnDisplayName
+      //$scope.crucible[$scope.psnDisplayName] = result;
+      $scope[crucibleTemp] = result;
+      return true;
+    });
   }
 
   // Generate dummyData for testing purposes
@@ -221,8 +268,17 @@ app.controller('main', function ($scope, $http, $ionicModal, $ionicPopup, localS
     }
   }
 
-  // Gather all the Clan Member data in single function CHECK FALLBACK AND COPY THE SAME INTO THIS
-  $scope.getAllMemberData = function(data) {
+  // Use the proper function for clan search if $scope.useProxy.checked status is true or false
+  $scope.userSearch = function(data) {
+    if($scope.useProxy.checked == true) {
+      $scope.getAllMembersProxy(data);
+    } else {
+      $scope.getAllMembersBungie(data);
+    }
+  }
+
+  // Gather all the Clan Member data in single function
+  $scope.getAllMembersBungie = function(data) {
     $scope.search = "search-show";
     if ($scope.apiKey.length < 31 && data !== null) {
       $scope.showApiAlert();
@@ -254,6 +310,62 @@ app.controller('main', function ($scope, $http, $ionicModal, $ionicPopup, localS
         $scope.showClanAlert(data.length);
         $scope.search = "search-hide";
         return 2; 
+    }
+  }
+
+  // use destiny-proxy (github.com/rinik/destiny-proxy) to get result
+  $scope.getAllMembersProxy = function(data) {
+    $scope.search = "search-show";
+    if ($scope.apiKey.length < 31 && data !== null) {
+      $scope.showApiAlert();
+      console.log($scope.apiKey.length);
+      return 2; // It's good practice to return something and you can catch error when code returns something. It could be false but I decieded to return 2.
+    } else {
+      // if search string "dummy" populate memberData with dummyData
+      if (data == "dummy") {
+        $scope.generateDummy(data);
+        $scope.search = "search-hide";
+        // check the data if it's null create just empty string that the lenght property doesn't create error
+      } else if(data == null || data.length < 4) {
+        if (data == null) {
+          data = "";
+        }
+        $scope.showClanAlert(data.length);
+        $scope.search = "search-hide";
+      } else {
+        $scope.getPosition();
+        $http.get("http://localhost/proxy/?clan=" + encodeURI(data.trim())).success(function(result) {
+          if(result.length == 0 || result == null) {
+            // Return error if the result is null or ""
+            $scope.showClanNull();
+          } else {
+            // successful result returns clanId
+            $scope.clanId = result;
+          }
+          
+          $http.get("http://localhost/proxy/?members=" + $scope.clanId).success(function(result) {
+            // successful result returns clan members in array
+            $scope.members = result;
+            // if already searched for clan, clear memberData before new array push, just for clear view
+            $scope.memberData = [];
+            // Hide the search spinner when first result is ready to display
+            $scope.search = "search-hide";
+            for (i=0; i < $scope.members.length; i++) {
+              $http.get("http://localhost/proxy/?member=" + $scope.members[i]).success(function(result) {
+                // Check the result for XBOX One accounts and empty psnDisplayName value
+                var data = $scope.checkMember(result);
+                if (data == 2) { // Here is a use case that $scope.checkMember returns error and we can catch it and use it (That's some fine piece of code;)
+                  // don't add memberData because there is no psnDisplayName.
+                } else {
+                  // push successful result to array
+                  $scope.memberData.push(data);
+                }
+
+            })
+            }
+          })
+        })
+      }
     }
   }
 
